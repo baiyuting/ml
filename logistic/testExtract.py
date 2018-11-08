@@ -22,3 +22,5 @@ for temp in sentences:
             break
 print(data)
 print(target)
+
+

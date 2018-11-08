@@ -21,6 +21,7 @@ transformer = TfidfTransformer()
 tf_idf = transformer.fit_transform(X)  # 将词频矩阵X统计成TF-IDF值
 vectors = tf_idf.toarray()  # 词向量 集合
 log_reg = LogisticRegression()
+
 log_reg.fit(vectors, target_train)
 
 sent_words = [list(jieba.cut(sent0)) for sent0 in data_test]
