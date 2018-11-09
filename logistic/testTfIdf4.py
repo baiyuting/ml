@@ -3,12 +3,21 @@ import re
 from collections import Counter
 
 import jieba
+from imblearn.combine import SMOTEENN, SMOTETomek
+from imblearn.ensemble import BalancedBaggingClassifier, BalanceCascade, EasyEnsembleClassifier
 from imblearn.over_sampling import SMOTE
+from imblearn.under_sampling import RepeatedEditedNearestNeighbours, AllKNN, EditedNearestNeighbours, ClusterCentroids, \
+    RandomUnderSampler, NearMiss
+from sklearn.ensemble import RandomForestClassifier, VotingClassifier, BaggingClassifier
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 # 接下来根据输入的词向量 集合开始 分类，此处引入 logistic 回归
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import GaussianNB
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
+from tensorflow.contrib.learn import SVM
 
 
 def get_data_target(text, keywords, label):
@@ -54,27 +63,63 @@ X = vec.fit_transform(document)  # 计算个词语出现的次数
 transformer = TfidfTransformer()
 tf_idf = transformer.fit_transform(X)  # 将词频矩阵X统计成TF-IDF值
 print(Counter(target_train))  # 输出训练的 标签比例
+print(len(tf_idf.toarray()))
+print(len(tf_idf.toarray()[0]))
 
 # 此处要考虑 样本不均衡问题，使用 SMOTE 平衡样本
-smo = SMOTE(random_state=42)
-X_smo, y_smo = smo.fit_sample(tf_idf, target_train)
-print(Counter(y_smo))  # 输出样本均衡过后的 标签比例
+# smo = SMOTE(random_state=42)
+# X_smo, y_smo = smo.fit_sample(tf_idf, target_train)
+# print(Counter(y_smo))  # 输出样本均衡过后的 标签比例
 
-log_reg = LogisticRegression()
-log_reg.fit(X_smo, y_smo)
+# 欠采样
+renn = RandomUnderSampler(random_state=42)
+X_smoenn, y_smoenn = renn.fit_sample(tf_idf, target_train)
+print(Counter(y_smoenn))
+
+from imblearn.ensemble import EasyEnsemble
+
+ee = EasyEnsemble(random_state=0, n_subsets=31)
+# ee = BalanceCascade(random_state=0,
+#                     estimator=SVC(random_state=0),
+#                     n_max_subset=31)
+X_resampled, y_resampled = ee.fit_sample(tf_idf, target_train)
+print(sorted(Counter(y_resampled[0]).items()))
+
+
+import sklearn.neural_network as sk_nn
+
+# log_reg = sk_nn.MLPClassifier(activation='tanh', solver='adam', alpha=0.0001, learning_rate='adaptive',
+#                               learning_rate_init=0.001, max_iter=400)
+# log_reg.fit(X_smoenn.toarray(), y_smoenn)
+
+# log_reg = SVC()
+# log_reg.fit(X_smoenn, y_smoenn)
+
+
+# log_reg = VotingClassifier(estimators=[('svc', SVC()), ('dt', DecisionTreeClassifier()), ('lr', LogisticRegression(
+# ))], voting='hard')
+log_reg = BalancedBaggingClassifier(base_estimator=SVC(gamma='auto'), ratio='auto',
+                                    replacement=False,
+                                    random_state=0)
+for i in range(len(y_resampled)):
+    log_reg.fit(X_resampled[i], y_resampled[i])
+
+# log_reg = EasyEnsembleClassifier(random_state=42)
+# print(log_reg.sampling_strategy)
+# log_reg.fit(tf_idf, target_train)
 
 sent_words = [list(jieba.cut(sent0)) for sent0 in data_test]
 document = [" ".join(sent0) for sent0 in sent_words]  # ['我 是 一个 好 青年', '使用 sklearn 提取 文本 的 tfidf 特征 青年 青年']
 X = vec.transform(document)
 tf_idf = transformer.transform(X)
 
-score = log_reg.score(tf_idf, target_test)
+score = log_reg.score(tf_idf.toarray(), target_test)
 print(score)  # 准确率
 
-y_count_predict = log_reg.predict(X)
+y_count_predict = log_reg.predict(tf_idf.toarray())
 
 # 从sklearn.metrics 导入 classification_report。
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, confusion_matrix
 
 print(Counter(target_test))
 
@@ -87,5 +132,19 @@ for i in range(len(target_test)):
         count += 1
 print(count)
 
+from sklearn import metrics
 
-# print(metrics)
+# end svm ,start metrics
+test_auc = metrics.roc_auc_score(target_test, y_count_predict)  # 验证集上的auc值
+print(test_auc)
+
+print(confusion_matrix(target_test, y_count_predict))
+
+# import sklearn.model_selection as sk_model_selection
+
+# sent_words = [list(jieba.cut(sent0)) for sent0 in data]
+# document = [" ".join(sent0) for sent0 in sent_words]
+# X = vec.transform(document)
+# tf_idf = transformer.transform(X)
+# accs = sk_model_selection.cross_val_score(log_reg, tf_idf.toarray(), y=target, scoring=None, cv=10, n_jobs=1)
+# print('交叉验证结果:', accs)
