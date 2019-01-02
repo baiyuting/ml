@@ -21,11 +21,11 @@ f = x * x * y + y + 2
 # print(result)
 
 # 运行方法三
-# init = tf.global_variables_initializer()
-# with tf.Session() as sess:
-#     init.run()
-#     result = f.eval()
-# print(result)
+init = tf.global_variables_initializer()
+with tf.Session() as sess:
+    init.run()
+    result = f.eval()
+print(result)
 
 # 运行方法四
 # init = tf.global_variables_initializer()

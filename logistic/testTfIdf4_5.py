@@ -6,7 +6,7 @@ import jieba
 import svm as svm
 from imblearn.combine import SMOTEENN, SMOTETomek
 from imblearn.ensemble import BalancedBaggingClassifier, BalanceCascade, EasyEnsembleClassifier, \
-    BalancedRandomForestClassifier, RUSBoostClassifier
+    BalancedRandomForestClassifier
 from imblearn.over_sampling import SMOTE
 from imblearn.under_sampling import RepeatedEditedNearestNeighbours, AllKNN, EditedNearestNeighbours, ClusterCentroids, \
     RandomUnderSampler, NearMiss
@@ -23,73 +23,24 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC, OneClassSVM
 from sklearn.tree import DecisionTreeClassifier
 
-
-def get_data_target(text, keywords, label):
-    sentences = re.split('[.?!。]', text)
-    data = []
-    target = []
-    for temp in sentences:
-        for kw in keywords:
-            if kw in temp:
-                data.append(temp)
-                if label == 99:
-                    target.append(-1)
-                else:
-                    target.append(1)
-                break
-    # print(data)
-    return data, target
-
-
 # 读取数据
-with open('D:/20181101_审核内容情感分析/export_feedback_audit_2018-11-06/data2.json', 'r', encoding='utf-8') as f:
-    data2 = json.load(f)
+with open('D:/20181101_审核内容情感分析/export_feedback_audit_2018-11-06/data5.json', 'r', encoding='utf-8') as f:
+    data3 = json.load(f)
     f.close()
-
-with open('D:/20181101_审核内容情感分析/export_feedback_audit_2018-11-06/data7.json', 'r', encoding='utf-8') as f:
-    data7 = json.load(f)
-    f.close()
-
-data2 += data7
-
-data2 = []
-with open('D:/20181101_审核内容情感分析/export_feedback_audit_2018-11-06/data.json', 'r', encoding='utf-8') as f:
-    data2 += json.load(f)
-    f.close()
-with open('D:/20181101_审核内容情感分析/export_feedback_audit_2018-11-06/data_2.json', 'r', encoding='utf-8') as f:
-    data2 += json.load(f)
-    f.close()
-
-data2 = []
-with open('D:/20181101_审核内容情感分析/export_feedback_audit_2018-11-06/export_feedback_audit_2018-12-13.json', 'r',
-          encoding='utf-8') as f:
-    data2 += json.load(f)
-    f.close()
-
-for item in data2:
-    item['label'] = item['feedback_type']
-    item['words'] = []
-    for risk in item['risks']:
-        item['words'] += risk['hit']
-data_file = []
-for item in data2:
-    if len(item['words']) == 0:
-        continue
-    if len(item['risks']) == 1 and item['risks'][0]['label'] == 4:
-        continue
-    data_file.append(item)
 
 data = []
 target = []
-for d in data_file:
-    data_temp, target_temp = get_data_target(d['text'], d['words'], d['label'])
-    data += data_temp
-    target += target_temp
+for d in data3:
+    data_temp, target_temp = d['text'], d['label']
+    if target_temp == 99:
+        target_temp = 0
+    data.append(data_temp)
+    target.append(target_temp)
 
 # data = ['我是一个好青年', '使用sklearn提取文本的tfidf特征青年青年开心', '使用sklearn提取文本的tfidf特征青年', '我很开心', '我是一个好青年']
 # target = [1, 0, 0, 1, 1]
 
-data_train, data_test, target_train, target_test = train_test_split(data, target)
+data_train, data_test, target_train, target_test = train_test_split(data, target, random_state=42)
 print(Counter(target))
 
 sent_words = [list(jieba.cut(sent0)) for sent0 in data_train]
@@ -109,38 +60,38 @@ print(len(tf_idf.toarray()))
 print(len(tf_idf.toarray()[0]))
 print(Counter(target_train).get(1))
 
-tf_idf_train_1 = []
-target_train_1 = []
-tf_idf_train_0 = []
-target_train_0 = []
-array = tf_idf.toarray()
-for i in range(len(target_train)):
-    if target_train[i] == 1:
-        tf_idf_train_1.append(array[i])
-        target_train_1.append(1)
-    else:
-        tf_idf_train_0.append(array[i])
-        target_train_0.append(-1)
+# tf_idf_train_1 = []
+# target_train_1 = []
+# tf_idf_train_0 = []
+# target_train_0 = []
+# array = tf_idf.toarray()
+# for i in range(len(target_train)):
+#     if target_train[i] == 1:
+#         tf_idf_train_1.append(array[i])
+#         target_train_1.append(1)
+#     else:
+#         tf_idf_train_0.append(array[i])
+#         target_train_0.append(-1)
+#
+# temp_train_0 = []
+# temp_target_train_0 = []
+# rate = len(target_train_1) / len(target_train_0)
+# for i in range(int(rate)):
+#     temp_train_0 += tf_idf_train_0
+#     temp_target_train_0 += target_train_0
 
-temp_train_0 = []
-temp_target_train_0 = []
-rate = len(target_train_1) / len(target_train_0)
-for i in range(int(rate)):
-    temp_train_0 += tf_idf_train_0
-    temp_target_train_0 += target_train_0
-
-data_train_new = temp_train_0 + tf_idf_train_1
-target_train_new = temp_target_train_0 + target_train_1
-print(Counter(target_train_new))
+# data_train_new = temp_train_0 + tf_idf_train_1
+# target_train_new = temp_target_train_0 + target_train_1
+# print(Counter(target_train_new))
 
 # 此处要考虑 样本不均衡问题，使用 SMOTE 平衡样本
-smo = SMOTE()
-X_smo, y_smo = smo.fit_sample(tf_idf, target_train)
-print(Counter(y_smo))  # 输出样本均衡过后的 标签比例
+# smo = SMOTE()
+# X_smo, y_smo = smo.fit_sample(tf_idf, target_train)
+# print(Counter(y_smo))  # 输出样本均衡过后的 标签比例
 
 # 欠采样
-renn = RandomUnderSampler()
-X_smoenn, y_smoenn = renn.fit_sample(tf_idf, target_train)
+# renn = RandomUnderSampler()
+# X_smoenn, y_smoenn = renn.fit_sample(tf_idf, target_train)
 # print(Counter(y_smoenn))
 
 # 朴素贝叶斯
@@ -162,8 +113,7 @@ from imblearn.ensemble import EasyEnsemble
 
 import sklearn.neural_network as sk_nn
 
-# log_reg = sk_nn.MLPClassifier(activation='tanh', solver='adam', alpha=0.0001, learning_rate='adaptive',
-#                               learning_rate_init=0.001, max_iter=400)
+# log_reg = sk_nn.MLPClassifier()
 # log_reg.fit(X_smoenn.toarray(), y_smoenn)
 
 # log_reg = BaggingClassifier(random_state=42)
@@ -183,21 +133,19 @@ import sklearn.neural_network as sk_nn
 
 # log_reg = EasyEnsembleClassifier(random_state=42,
 #                                  base_estimator=MLPClassifier(random_state=42, max_iter=300))
-# log_reg = EasyEnsembleClassifier(base_estimator=SVC(gamma='auto', class_weight='balanced'))
-# log_reg = EasyEnsembleClassifier(base_estimator=LogisticRegression(solver='lbfgs'))
+# log_reg = EasyEnsembleClassifier(base_estimator=SVC(gamma='auto'))
+log_reg = EasyEnsembleClassifier(base_estimator=LogisticRegression(solver='lbfgs'))
+# log_reg = SVC(class_weight='balanced')
+# log_reg = LogisticRegression(class_weight='balanced', solver='lbfgs')
+# log_reg = DecisionTreeClassifier(class_weight='balanced')
+# log_reg = RandomForestClassifier(class_weight='balanced', n_estimators=100)
 # log_reg = RandomForestClassifier(n_estimators=100)
 # log_reg = EasyEnsembleClassifier(base_estimator=MultinomialNB())
-log_reg = EasyEnsembleClassifier(base_estimator=SVC(kernel='linear'))
-# log_reg = EasyEnsembleClassifier(base_estimator=RandomForestClassifier(n_estimators=10, max_depth=100))
 # log_reg = BalancedBaggingClassifier(base_estimator=MultinomialNB())
-# log_reg = BalancedBaggingClassifier(base_estimator=LogisticRegression(solver='lbfgs'))
-# log_reg = BalancedBaggingClassifier(base_estimator=GaussianNB())
 # log_reg = EasyEnsembleClassifier(base_estimator=GaussianNB())
 # log_reg = EasyEnsembleClassifier(base_estimator=DecisionTreeClassifier())
 # log_reg = EasyEnsembleClassifier(base_estimator=BernoulliNB())
 # log_reg = AdaBoostClassifier(base_estimator=MultinomialNB())
-# log_reg = BalancedRandomForestClassifier()
-# log_reg = RUSBoostClassifier(base_estimator=BernoulliNB())
 log_reg.fit(tf_idf.toarray(), target_train)
 # log_reg = OneClassSVM(gamma='auto')
 # log_reg = IsolationForest(behaviour='new', contamination='auto')
@@ -205,11 +153,6 @@ log_reg.fit(tf_idf.toarray(), target_train)
 # print(Counter(target_train))
 # log_reg.fit(tf_idf_train_1)
 # print(len(tf_idf_train_1))
-
-# log_reg = MultinomialNB()
-# log_reg = LogisticRegression(solver='lbfgs')
-# log_reg = BernoulliNB()
-# log_reg.fit(X_smoenn, y_smoenn)
 
 # 过采样
 # log_reg = MultinomialNB()

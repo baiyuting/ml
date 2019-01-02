@@ -52,36 +52,9 @@ with open('D:/20181101_审核内容情感分析/export_feedback_audit_2018-11-06
 
 data2 += data7
 
-data2 = []
-with open('D:/20181101_审核内容情感分析/export_feedback_audit_2018-11-06/data.json', 'r', encoding='utf-8') as f:
-    data2 += json.load(f)
-    f.close()
-with open('D:/20181101_审核内容情感分析/export_feedback_audit_2018-11-06/data_2.json', 'r', encoding='utf-8') as f:
-    data2 += json.load(f)
-    f.close()
-
-data2 = []
-with open('D:/20181101_审核内容情感分析/export_feedback_audit_2018-11-06/export_feedback_audit_2018-12-13.json', 'r',
-          encoding='utf-8') as f:
-    data2 += json.load(f)
-    f.close()
-
-for item in data2:
-    item['label'] = item['feedback_type']
-    item['words'] = []
-    for risk in item['risks']:
-        item['words'] += risk['hit']
-data_file = []
-for item in data2:
-    if len(item['words']) == 0:
-        continue
-    if len(item['risks']) == 1 and item['risks'][0]['label'] == 4:
-        continue
-    data_file.append(item)
-
 data = []
 target = []
-for d in data_file:
+for d in data2:
     data_temp, target_temp = get_data_target(d['text'], d['words'], d['label'])
     data += data_temp
     target += target_temp
@@ -184,13 +157,13 @@ import sklearn.neural_network as sk_nn
 # log_reg = EasyEnsembleClassifier(random_state=42,
 #                                  base_estimator=MLPClassifier(random_state=42, max_iter=300))
 # log_reg = EasyEnsembleClassifier(base_estimator=SVC(gamma='auto', class_weight='balanced'))
-# log_reg = EasyEnsembleClassifier(base_estimator=LogisticRegression(solver='lbfgs'))
+log_reg = EasyEnsembleClassifier(base_estimator=LogisticRegression(solver='lbfgs'))
 # log_reg = RandomForestClassifier(n_estimators=100)
-# log_reg = EasyEnsembleClassifier(base_estimator=MultinomialNB())
-log_reg = EasyEnsembleClassifier(base_estimator=SVC(kernel='linear'))
+log_reg2 = EasyEnsembleClassifier(base_estimator=MultinomialNB())
+log_reg3 = EasyEnsembleClassifier(base_estimator=SVC(kernel='linear'))
 # log_reg = EasyEnsembleClassifier(base_estimator=RandomForestClassifier(n_estimators=10, max_depth=100))
-# log_reg = BalancedBaggingClassifier(base_estimator=MultinomialNB())
-# log_reg = BalancedBaggingClassifier(base_estimator=LogisticRegression(solver='lbfgs'))
+# log_reg2 = BalancedBaggingClassifier(base_estimator=MultinomialNB())
+# log_reg3 = BalancedBaggingClassifier(base_estimator=LogisticRegression(solver='lbfgs'))
 # log_reg = BalancedBaggingClassifier(base_estimator=GaussianNB())
 # log_reg = EasyEnsembleClassifier(base_estimator=GaussianNB())
 # log_reg = EasyEnsembleClassifier(base_estimator=DecisionTreeClassifier())
@@ -199,6 +172,9 @@ log_reg = EasyEnsembleClassifier(base_estimator=SVC(kernel='linear'))
 # log_reg = BalancedRandomForestClassifier()
 # log_reg = RUSBoostClassifier(base_estimator=BernoulliNB())
 log_reg.fit(tf_idf.toarray(), target_train)
+log_reg2.fit(tf_idf.toarray(), target_train)
+log_reg3.fit(tf_idf.toarray(), target_train)
+
 # log_reg = OneClassSVM(gamma='auto')
 # log_reg = IsolationForest(behaviour='new', contamination='auto')
 # log_reg = EllipticEnvelope()
@@ -238,6 +214,17 @@ tf_idf = vec.transform(document)
 # tf_idf, target_test = renn.fit_sample(tf_idf, target_test)
 
 y_count_predict = log_reg.predict(tf_idf.toarray())
+y_count_predict2 = log_reg2.predict(tf_idf.toarray())
+y_count_predict3 = log_reg3.predict(tf_idf.toarray())
+
+for i in range(len(y_count_predict)):
+    y_count_predict[i] += y_count_predict2[i]
+    y_count_predict[i] += y_count_predict3[i]
+    if y_count_predict[i] >= 1:
+        y_count_predict[i] = 1
+    else:
+        y_count_predict[i] = -1
+
 print(Counter(y_count_predict))
 
 # 从sklearn.metrics 导入 classification_report。
