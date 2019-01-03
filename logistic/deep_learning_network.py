@@ -12,7 +12,8 @@ from sklearn.model_selection import train_test_split
 
 from mxnet import ndarray as nd
 
-from logistic.deep_learning_network_util import BiRNN, get_vocab, preprocess, read_total_data, get_confusion_matrix
+from logistic.deep_learning_network_util import BiRNN, get_vocab, preprocess, read_total_data, get_confusion_matrix, \
+    train
 
 total_data = read_total_data()
 
@@ -45,7 +46,8 @@ net.embedding.weight.set_data(glove_embedding.idx_to_vec)
 net.embedding.collect_params().setattr('grad_req', 'null')
 
 lr, num_epochs = 0.01, 5
-trainer = gluon.Trainer(net.collect_params(), 'adam', {'learning_rate': lr, 'wd':3})
+trainer = gluon.Trainer(net.collect_params(), 'adam', {'learning_rate': lr})
 loss = gloss.SoftmaxCrossEntropyLoss()
-gb.train(train_iter, test_iter, net, loss, trainer, ctx, num_epochs)
-print(get_confusion_matrix(test_iter, net))
+train(train_iter, test_iter, net, loss, trainer, num_epochs, batch_size)
+
+

@@ -119,3 +119,41 @@ def get_confusion_matrix(test_iter, net):
     print("0召回", 0 if (m[0][0] + m[1][0]) == 0 else m[0][0] * 1.0 / (m[0][0] + m[1][0]))
     print("1召回", 0 if (m[0][1] + m[1][1]) == 0 else m[1][1] * 1.0 / (m[0][1] + m[1][1]))
     return m
+
+
+def confusion_matrix(test_iter, net):
+    test_acc_sum = 0.0
+    m = nd.zeros(shape=(2, 2))
+    for X, y in test_iter:
+        y_ = net(X).argmax(axis=1)
+        test_acc_sum += (y_ == y).sum().asscalar()
+        for i in y.size:
+            if y[i] == y_[i]:
+                if y[i] == 1:
+                    m[1][1] += 1
+                else:
+                    m[0][0] += 1
+            else:
+                if y[i] == 0:
+                    m[0][1] += 1
+                else:
+                    m[1][0] += 1
+    return m, test_acc_sum
+
+
+def train(train_iter, test_iter, net, loss, trainer, num_epochs, batch_size):
+    for epoch in range(num_epochs):
+        train_l_sum, n, train_acc_sum, test_acc_sum = 0.0, 0, 0.0, 0.0
+        for X, y in train_iter:
+            y_hat = net(X)
+            y_ = y_hat.argmax(axis=1)
+            with autograd.record():
+                l = loss(y_hat, y)
+            l.backward()
+            trainer.step(batch_size)
+            train_l_sum += l.asscalar()
+            train_acc_sum += (y_ == y).sum().asscalar()
+            n += y.size
+        m, test_acc_sum = confusion_matrix(test_iter, net)
+        print('epoch %d, loss %.4f, train_acc %.3f, test_acc %.3f, test_confusion_matrix is' % (
+            epoch, (train_l_sum / n), (train_acc_sum / n), (test_acc_sum / n)), m)
