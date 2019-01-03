@@ -45,7 +45,7 @@ net.embedding.weight.set_data(glove_embedding.idx_to_vec)
 net.embedding.collect_params().setattr('grad_req', 'null')
 
 lr, num_epochs = 0.01, 5
-trainer = gluon.Trainer(net.collect_params(), 'adam', {'learning_rate': lr})
+trainer = gluon.Trainer(net.collect_params(), 'adam', {'learning_rate': lr, 'wd':3})
 loss = gloss.SoftmaxCrossEntropyLoss()
 gb.train(train_iter, test_iter, net, loss, trainer, ctx, num_epochs)
 print(get_confusion_matrix(test_iter, net))

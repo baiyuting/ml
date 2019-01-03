@@ -89,7 +89,7 @@ for d in data_file:
 # data = ['我是一个好青年', '使用sklearn提取文本的tfidf特征青年青年开心', '使用sklearn提取文本的tfidf特征青年', '我很开心', '我是一个好青年']
 # target = [1, 0, 0, 1, 1]
 
-data_train, data_test, target_train, target_test = train_test_split(data, target)
+data_train, data_test, target_train, target_test = train_test_split(data, target, random_state=42)
 print(Counter(target))
 
 sent_words = [list(jieba.cut(sent0)) for sent0 in data_train]
@@ -141,7 +141,7 @@ print(Counter(y_smo))  # 输出样本均衡过后的 标签比例
 # 欠采样
 renn = RandomUnderSampler()
 X_smoenn, y_smoenn = renn.fit_sample(tf_idf, target_train)
-# print(Counter(y_smoenn))
+print(Counter(y_smoenn))
 
 # 朴素贝叶斯
 # log_reg = MultinomialNB()
@@ -184,10 +184,12 @@ import sklearn.neural_network as sk_nn
 # log_reg = EasyEnsembleClassifier(random_state=42,
 #                                  base_estimator=MLPClassifier(random_state=42, max_iter=300))
 # log_reg = EasyEnsembleClassifier(base_estimator=SVC(gamma='auto', class_weight='balanced'))
+# log_reg = MultinomialNB(fit_prior=False)
+log_reg = LogisticRegression()
 # log_reg = EasyEnsembleClassifier(base_estimator=LogisticRegression(solver='lbfgs'))
 # log_reg = RandomForestClassifier(n_estimators=100)
 # log_reg = EasyEnsembleClassifier(base_estimator=MultinomialNB())
-log_reg = EasyEnsembleClassifier(base_estimator=SVC(kernel='linear'))
+# log_reg = EasyEnsembleClassifier(base_estimator=SVC(kernel='linear'))
 # log_reg = EasyEnsembleClassifier(base_estimator=RandomForestClassifier(n_estimators=10, max_depth=100))
 # log_reg = BalancedBaggingClassifier(base_estimator=MultinomialNB())
 # log_reg = BalancedBaggingClassifier(base_estimator=LogisticRegression(solver='lbfgs'))
@@ -198,7 +200,8 @@ log_reg = EasyEnsembleClassifier(base_estimator=SVC(kernel='linear'))
 # log_reg = AdaBoostClassifier(base_estimator=MultinomialNB())
 # log_reg = BalancedRandomForestClassifier()
 # log_reg = RUSBoostClassifier(base_estimator=BernoulliNB())
-log_reg.fit(tf_idf.toarray(), target_train)
+# log_reg.fit(tf_idf.toarray(), target_train)
+log_reg.fit(X_smoenn, y_smoenn)
 # log_reg = OneClassSVM(gamma='auto')
 # log_reg = IsolationForest(behaviour='new', contamination='auto')
 # log_reg = EllipticEnvelope()

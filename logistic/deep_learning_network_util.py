@@ -114,9 +114,8 @@ def get_confusion_matrix(test_iter, net):
     m = nd.zeros((2, 2), dtype='int32').asnumpy().tolist()
     for i in range(len(y)):
         m[int(y[i])][int(y_true[i])] += 1
-    print("0精度", m[0][0] * 1.0 / (m[0][0] + m[0][1]))
-    print("1精度", m[1][1] * 1.0 / (m[1][0] + m[1][1]))
-    print("0召回", m[0][0] * 1.0 / (m[0][0] + m[1][0]))
-    print("1召回", m[1][1] * 1.0 / (m[0][1] + m[1][1]))
+    print("0精度", 0 if (m[0][0] + m[0][1]) == 0 else m[0][0] * 1.0 / (m[0][0] + m[0][1]))
+    print("1精度", 0 if (m[1][0] + m[1][1]) == 0 else m[1][1] * 1.0 / (m[1][0] + m[1][1]))
+    print("0召回", 0 if (m[0][0] + m[1][0]) == 0 else m[0][0] * 1.0 / (m[0][0] + m[1][0]))
+    print("1召回", 0 if (m[0][1] + m[1][1]) == 0 else m[1][1] * 1.0 / (m[0][1] + m[1][1]))
     return m
-
