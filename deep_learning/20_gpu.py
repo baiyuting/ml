@@ -32,3 +32,5 @@ net.initialize(ctx=mx.gpu())
 print(net(y))
 
 print(net[0].weight.data())
+
+

@@ -34,6 +34,17 @@ with open('D:/20181101_审核内容情感分析/export_feedback_audit_2018-11-06
 
 data2 += data7
 
+data2 = []
+with open('D:/20181101_审核内容情感分析/export_feedback_audit_2018-11-06/export_feedback_audit_2018-12-13.json', 'r',
+          encoding='utf-8') as f:
+    data2 += json.load(f)
+    f.close()
+for item in data2:
+    item['label'] = item['feedback_type']
+    item['words'] = []
+    for risk in item['risks']:
+        item['words'] += risk['hit']
+
 data = []
 target = []
 for d in data2:
@@ -149,6 +160,7 @@ for index in range(count):
     # log_reg = RandomForestClassifier(class_weight='balanced', n_estimators=100)
     # log_reg = RandomForestClassifier(n_estimators=100)
     log_reg = EasyEnsembleClassifier(base_estimator=MultinomialNB())
+    # log_reg = EasyEnsembleClassifier()
     # log_reg = BalancedBaggingClassifier(base_estimator=MultinomialNB())
     # log_reg = EasyEnsembleClassifier(base_estimator=GaussianNB())
     # log_reg = EasyEnsembleClassifier(base_estimator=DecisionTreeClassifier())

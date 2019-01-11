@@ -6,6 +6,9 @@ import jieba
 from mxnet import nd, autograd
 from mxnet.contrib import text
 from mxnet.gluon import nn, rnn
+from mxnet.gluon.loss import Loss
+
+import d2lzh as d2l
 
 
 class BiRNN(nn.Block):
@@ -121,13 +124,31 @@ def get_confusion_matrix(test_iter, net):
     return m
 
 
-def confusion_matrix(test_iter, net):
+def confusion_matrix(test_iter, net, ctx, loss):
+    """
+    生成混淆矩阵
+    :param test_iter:
+    :param net:
+    :param ctx:
+    :param loss:
+    :return:
+        0   1
+    0   X   X
+    1   X   X
+    """
     test_acc_sum = 0.0
-    m = nd.zeros(shape=(2, 2))
+    test_n = 0
+    test_l_sum = 0.0
+    m = nd.zeros(shape=(2, 2), ctx=ctx)
     for X, y in test_iter:
-        y_ = net(X).argmax(axis=1)
+        X = X.as_in_context(ctx)
+        y = y.as_in_context(ctx)
+        y_hat = net(X)
+        y_ = y_hat.argmax(axis=1)
         test_acc_sum += (y_ == y).sum().asscalar()
-        for i in y.size:
+        test_n += y.size
+        test_l_sum += loss(y_hat, y).sum().asscalar()
+        for i in range(y.size):
             if y[i] == y_[i]:
                 if y[i] == 1:
                     m[1][1] += 1
@@ -138,22 +159,41 @@ def confusion_matrix(test_iter, net):
                     m[0][1] += 1
                 else:
                     m[1][0] += 1
-    return m, test_acc_sum
+    return m, test_acc_sum, test_n, test_l_sum
 
 
-def train(train_iter, test_iter, net, loss, trainer, num_epochs, batch_size):
+class MyLoss(Loss):
+    def __init__(self, axis=-1, weight=None, batch_axis=0, **kwargs):
+        super(MyLoss, self).__init__(weight, batch_axis, **kwargs)
+        self._axis = axis
+
+    def hybrid_forward(self, F, pred, label, sample_weight=None):
+        p = F.softmax(pred, self._axis)
+        pred = (1 - p) * F.log_softmax(pred, self._axis)
+        loss = -F.pick(pred, label, axis=self._axis, keepdims=True)
+        return F.mean(loss, axis=self._batch_axis, exclude=True)
+
+
+def train(train_iter, test_iter, net, loss, trainer, num_epochs, batch_size, ctx):
+    train_ls, test_ls = [], []
     for epoch in range(num_epochs):
-        train_l_sum, n, train_acc_sum, test_acc_sum = 0.0, 0, 0.0, 0.0
+        train_l_sum, n, train_acc_sum, test_acc_sum, start = 0.0, 0, 0.0, 0.0, time.time()
         for X, y in train_iter:
-            y_hat = net(X)
-            y_ = y_hat.argmax(axis=1)
+            X = X.as_in_context(ctx)
+            y = y.as_in_context(ctx)
             with autograd.record():
+                y_hat = net(X)
+                y_ = y_hat.argmax(axis=1)
                 l = loss(y_hat, y)
             l.backward()
             trainer.step(batch_size)
-            train_l_sum += l.asscalar()
+            train_l_sum += l.sum().asscalar()
             train_acc_sum += (y_ == y).sum().asscalar()
             n += y.size
-        m, test_acc_sum = confusion_matrix(test_iter, net)
-        print('epoch %d, loss %.4f, train_acc %.3f, test_acc %.3f, test_confusion_matrix is' % (
-            epoch, (train_l_sum / n), (train_acc_sum / n), (test_acc_sum / n)), m)
+        m, test_acc_sum, test_n, test_l_sum = confusion_matrix(test_iter, net, ctx, loss)
+        train_ls.append(train_l_sum / n)
+        test_ls.append(test_l_sum / test_n)
+        print('epoch %d, loss %.4f, train_acc %.3f, test_acc %.3f, time %.1f sec, test_confusion_matrix is' % (
+            epoch, (train_l_sum / n), (train_acc_sum / n), (test_acc_sum / test_n), time.time() - start), m)
+    d2l.semilogy(range(1, num_epochs + 1), train_ls, 'epochs', 'loss', range(1, num_epochs + 1), test_ls,
+                 ['train', 'test'])
