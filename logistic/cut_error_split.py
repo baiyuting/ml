@@ -14,15 +14,16 @@ for item in data:
     # if len(item['risks'][0]['hit']) == 0:
     #     material_3.append(item)
     word_split = 0
-    for sen in re.split('[.?!。]', item['text']):
-        for word in item['risks'][0]['hit']:
-            if word in sen:
-                cuts = list(jieba.cut(sen))
-                for c in cuts:
-                    if len(c) == 1:
-                        continue
-                    if word in c or c in word:
-                        word_split = 1
+    for sen in re.split('[.?!。]', item['text']):  # 对于每一句话
+        for item_risk in item['risks']:  # 对于每一个 risk
+            for word in item_risk['hit']:  # 对于每一个敏感词
+                if word in sen:
+                    cuts = list(jieba.cut(sen))
+                    for c in cuts:
+                        if len(c) == 1:
+                            continue
+                        if word in c or c in word:
+                            word_split = 1
 
     if word_split == 0:
         material_3.append(item)

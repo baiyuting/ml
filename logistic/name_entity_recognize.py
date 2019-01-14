@@ -26,14 +26,16 @@ def test():
     name_entity_else = []
     for item in data:
         sentences = re.split('[.!?。]', item['text'])
-        temp_sentences = []
-        hits = item['risks'][0]['hit']
+        is_useless = True
+        hits = []  # 敏感词准备
+        for item_risk in item['risks']:
+            hits += item_risk['hit']
+        temp_sentences = []  # 敏感词所在的句子准备
         for sen in sentences:
             for hit in hits:
                 if hit in sen:
                     temp_sentences.append(sen)
-        is_useless = True
-        for temp_sen in temp_sentences:
+        for temp_sen in temp_sentences:  # 对于每一个句子
             for hit in hits:
                 if not useless(hit, temp_sen, viterbi_segment):  # 只要有一个 敏感词 不是无用的，就不过滤
                     is_useless = False
