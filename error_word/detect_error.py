@@ -1,13 +1,50 @@
-import jieba
+"""
+初始化模型
+"""
+from error_word.detect_error_model import get_one_word_model, get_two_words_model, get_three_words_model, \
+    get_one_character_model, get_two_characters_model, get_three_characters_model
+
+# 词模型
+one_word_model = get_one_word_model()
+two_words_model = get_two_words_model()
+three_words_model = get_three_words_model()
+words_model = [one_word_model, two_words_model, three_words_model]
+
+# 字模型
+one_character_model = get_one_character_model()
+two_characters_model = get_two_characters_model()
+three_characters_model = get_three_characters_model()
+characters_model = [one_character_model, two_characters_model, three_characters_model]
+
+# 字词模型
+word_character_model = [words_model, characters_model]
+
+
+def R(segments, word_or_character):
+    """
+    计算 连续字词 的 共现频次
+    :param segments:
+    :param word_or_character: word 0| character 1
+    :return:
+    """
+    model = word_character_model[word_or_character][len(segments) - 1]  # 获取对应的字词模型
+    key = " ".join(segments)  # 获取查询对应模型的频次需要的 key 值
+    if key not in model.keys():
+        return 0
+    else:
+        return model[key]
 
 
 def P_character_word(character):
     """
-    todo 待实现 一个字单独出现的概率
+    todo 此处暂时做一个简化，只要没有出现在 单词模型中的，返回0，否则返回 1
     :param character:  长度为1的字符串 散串
     :return:
     """
-    pass
+    if character not in one_word_model.keys():  # 在单个词模型当中，没有这个单字词，认为它不能单独成词
+        return 0
+    else:
+        return 1
 
 
 def K_1(i, segments):
@@ -21,16 +58,6 @@ def K_1(i, segments):
     if len(segments[i]) == 1 and P_character_word(segments[i]) == 0:  # 如果是散串且 单字成词 概率为 0
         K1 += 1.5
     return K1
-
-
-def R(segments):
-    """
-    todo 需要有熟语料
-    计算 连续字词 的 共现频次
-    :param segments:
-    :return:
-    """
-    pass
 
 
 def word_scope(i, len, n_gram):
@@ -65,7 +92,7 @@ def K_2(i, segments):
     if end - begin + 1 < 3:  # 如果begin 和 end 之间不够 三个词，不能使用 三元词接续模型，直接返回结果
         return K2
     for index in range(begin, end + 1 - 2):  # [begin,end-2]
-        r = R([segments[index], segments[index + 1], segments[index + 2]])
+        r = R([segments[index], segments[index + 1], segments[index + 2]], 0)
         if r == 0:
             K2 += 0.2
         elif r >= 1:
@@ -87,7 +114,7 @@ def K_3(i, segments):
     if end - begin + 1 < 2:
         return K3
     for index in range(begin, end + 1 - 1):
-        r = R([segments[index], segments[index + 1]])
+        r = R([segments[index], segments[index + 1]], 0)
         if r == 0:
             K3 += 0.5
         elif 1 <= r < 2:
@@ -130,7 +157,7 @@ def K_4(i, segments, text):
     if end - begin + 1 < 3:
         return K4
     for index in range(begin, end + 1 - 2):  # [begin, end-2]
-        r = R([text[index], text[index + 1], text[index + 2]])
+        r = R([text[index], text[index + 1], text[index + 2]], 1)
         if r == 0:
             K4 += 0.2
         elif r >= 1:
@@ -153,7 +180,7 @@ def K_5(i, segments, text):
     if end - begin + 1 < 2:
         return K5
     for index in range(begin, end + 1 - 1):  # [begin, end-1]
-        r = R([text[index], text[index + 1]])
+        r = R([text[index], text[index + 1]], 1)
         if r == 0:
             K5 += 0.8
         elif 1 <= r < 3:
@@ -163,16 +190,26 @@ def K_5(i, segments, text):
     return K5
 
 
-def detect_error(text):
+def detect_error(segments, text):
+    """
+    查错
+    :param text:
+    :param segments
+    :return: 每一个 seg 检查结果
+    """
     position_res = {}
-    segments = list(jieba.cut(text))  # 结巴分词
     for i in range(len(segments)):
         error_i = False  # 默认这个位置是没有错的
         K1, K2, K3, K4, K5 = K_1(i, segments), K_2(i, segments), K_3(i, segments), K_4(i, segments, text), K_5(i,
                                                                                                                segments,
                                                                                                                text)
+        # K1 = 0
+        K2 = 0
+        # K3 = 0
+        K4 = 0
+        K5 = 0
         K = K1 + K2 + K3 + K4 + K5
-        if K >= 1.5:
+        if K >= 1.0:
             error_i = True
         position_res[i] = error_i
     return position_res
