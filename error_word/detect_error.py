@@ -2,7 +2,7 @@
 初始化模型
 """
 from error_word.detect_error_model import get_one_word_model, get_two_words_model, get_three_words_model, \
-    get_one_character_model, get_two_characters_model, get_three_characters_model
+    get_one_character_model, get_two_characters_model, get_three_characters_model, is_character_chinese
 
 # 词模型
 one_word_model = get_one_word_model()
@@ -55,7 +55,8 @@ def K_1(i, segments):
     :return:
     """
     K1 = 0
-    if len(segments[i]) == 1 and P_character_word(segments[i]) == 0:  # 如果是散串且 单字成词 概率为 0
+    if len(segments[i]) == 1 and is_character_chinese(segments[i]) and P_character_word(
+            segments[i]) == 0:  # 如果是散串、汉字、单字成词概率为 0
         K1 += 1.5
     return K1
 
@@ -109,6 +110,8 @@ def K_3(i, segments):
     """
     K3 = 0
     if len(segments[i]) != 1:  # 如果不是散串，直接返回结果
+        return K3
+    if not is_character_chinese(segments[i]):  # 如果不是中文词，直接返回
         return K3
     begin, end = word_scope(i, len(segments), 2)
     if end - begin + 1 < 2:

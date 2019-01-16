@@ -1,3 +1,12 @@
+def is_character_chinese(char):
+    """
+    该字符是否是中文
+    :param char:
+    :return:
+    """
+    return u'\u4e00' <= char <= u'\u9fff'
+
+
 def get_one_word_model():
     """
     一元词模型获取

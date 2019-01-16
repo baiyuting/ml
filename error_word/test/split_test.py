@@ -1,6 +1,3 @@
-from error_word.detect_error_model import people_words_characters, one_character_model
+from error_word.detect_error_model import is_character_chinese
 
-with open("split", 'r', encoding='utf-8') as fp:
-    lines = fp.readlines()
-
-one_character_model(lines)
+print(is_character_chinese('白'))

@@ -1,4 +1,4 @@
 import jieba
 
-cuts = list(jieba.cut('没有什么其他特别的就是一个普通是大夫的墓'))
+cuts = list(jieba.cut("确定不是尿和他呢"))
 print(cuts)
