@@ -179,6 +179,8 @@ def K_5(i, segments, text):
     K5 = 0
     if len(segments[i]) != 1:
         return K5
+    if not is_character_chinese(segments[i]):  # 如果不是中文词，直接返回
+        return K5
     begin, end = character_scope(text.index(segments[i]), len(segments[i]), len(text), 2)
     if end - begin + 1 < 2:
         return K5
@@ -208,11 +210,11 @@ def detect_error(segments, text):
                                                                                                                text)
         # K1 = 0
         K2 = 0
-        # K3 = 0
+        K3 = 0
         K4 = 0
-        K5 = 0
+        # K5 = 0
         K = K1 + K2 + K3 + K4 + K5
-        if K >= 1.0:
+        if K >= 1.5:
             error_i = True
         position_res[i] = error_i
     return position_res
