@@ -1,8 +1,9 @@
 """
 初始化模型
 """
+
 from error_word.detect_error_model import get_one_word_model, get_two_words_model, get_three_words_model, \
-    get_one_character_model, get_two_characters_model, get_three_characters_model, is_character_chinese
+    get_one_character_model, get_two_characters_model, get_three_characters_model, is_character_chinese, is_seg_chinese
 
 # 词模型
 one_word_model = get_one_word_model()
@@ -93,7 +94,10 @@ def K_2(i, segments):
     if end - begin + 1 < 3:  # 如果begin 和 end 之间不够 三个词，不能使用 三元词接续模型，直接返回结果
         return K2
     for index in range(begin, end + 1 - 2):  # [begin,end-2]
-        r = R([segments[index], segments[index + 1], segments[index + 2]], 0)
+        words = [segments[index], segments[index + 1], segments[index + 2]]
+        if not is_seg_chinese("".join(words)):
+            continue
+        r = R(words, 0)
         if r == 0:
             K2 += 0.2
         elif r >= 1:
@@ -111,13 +115,14 @@ def K_3(i, segments):
     K3 = 0
     if len(segments[i]) != 1:  # 如果不是散串，直接返回结果
         return K3
-    if not is_character_chinese(segments[i]):  # 如果不是中文词，直接返回
-        return K3
     begin, end = word_scope(i, len(segments), 2)
     if end - begin + 1 < 2:
         return K3
     for index in range(begin, end + 1 - 1):
-        r = R([segments[index], segments[index + 1]], 0)
+        words = [segments[index], segments[index + 1]]
+        if not is_seg_chinese("".join(words)):
+            continue
+        r = R(words, 0)
         if r == 0:
             K3 += 0.5
         elif 1 <= r < 2:
@@ -160,7 +165,10 @@ def K_4(i, segments, text):
     if end - begin + 1 < 3:
         return K4
     for index in range(begin, end + 1 - 2):  # [begin, end-2]
-        r = R([text[index], text[index + 1], text[index + 2]], 1)
+        chars = [text[index], text[index + 1], text[index + 2]]
+        if not is_seg_chinese("".join(chars)):
+            continue
+        r = R(chars, 1)
         if r == 0:
             K4 += 0.2
         elif r >= 1:
@@ -179,13 +187,14 @@ def K_5(i, segments, text):
     K5 = 0
     if len(segments[i]) != 1:
         return K5
-    if not is_character_chinese(segments[i]):  # 如果不是中文词，直接返回
-        return K5
     begin, end = character_scope(text.index(segments[i]), len(segments[i]), len(text), 2)
     if end - begin + 1 < 2:
         return K5
     for index in range(begin, end + 1 - 1):  # [begin, end-1]
-        r = R([text[index], text[index + 1]], 1)
+        chars = [text[index], text[index + 1]]
+        if not is_seg_chinese("".join(chars)):
+            continue
+        r = R(chars, 1)
         if r == 0:
             K5 += 0.8
         elif 1 <= r < 3:

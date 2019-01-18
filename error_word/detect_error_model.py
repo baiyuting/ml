@@ -1,3 +1,15 @@
+def is_seg_chinese(seg):
+    """
+    文本段 是否都是中文
+    :param seg:
+    :return:
+    """
+    for char in seg:
+        if not is_character_chinese(char):
+            return False
+    return True
+
+
 def is_character_chinese(char):
     """
     该字符是否是中文
