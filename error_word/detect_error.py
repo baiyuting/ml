@@ -150,10 +150,11 @@ def character_scope(c_i, w_len, s_len, n_gram):
     return begin, end
 
 
-def K_4(i, segments, text):
+def K_4(i, c_i, segments, text):
     """
     三元字 模型
     :param i:
+    :param c_i:
     :param segments:
     :param text:
     :return:
@@ -161,7 +162,7 @@ def K_4(i, segments, text):
     K4 = 0
     if len(segments[i]) != 1:
         return K4
-    begin, end = character_scope(text.index(segments[i]), len(segments[i]), len(text), 3)
+    begin, end = character_scope(c_i, len(segments[i]), len(text), 3)
     if end - begin + 1 < 3:
         return K4
     for index in range(begin, end + 1 - 2):  # [begin, end-2]
@@ -176,10 +177,11 @@ def K_4(i, segments, text):
     return K4
 
 
-def K_5(i, segments, text):
+def K_5(i, c_i, segments, text):
     """
     二元字模型
     :param i:
+    :param c_i:
     :param segments:
     :param text:
     :return:
@@ -187,7 +189,7 @@ def K_5(i, segments, text):
     K5 = 0
     if len(segments[i]) != 1:
         return K5
-    begin, end = character_scope(text.index(segments[i]), len(segments[i]), len(text), 2)
+    begin, end = character_scope(c_i, len(segments[i]), len(text), 2)
     if end - begin + 1 < 2:
         return K5
     for index in range(begin, end + 1 - 1):  # [begin, end-1]
@@ -212,11 +214,14 @@ def detect_error(segments, text):
     :return: 每一个 seg 检查结果
     """
     position_res = {}
+    c_i = 0
     for i in range(len(segments)):
         error_i = False  # 默认这个位置是没有错的
-        K1, K2, K3, K4, K5 = K_1(i, segments), K_2(i, segments), K_3(i, segments), K_4(i, segments, text), K_5(i,
-                                                                                                               segments,
-                                                                                                               text)
+        K1, K2, K3, K4, K5 = K_1(i, segments), K_2(i, segments), K_3(i, segments), K_4(i, c_i, segments, text), K_5(i,
+                                                                                                                    c_i,
+                                                                                                                    segments,
+                                                                                                                    text)
+        c_i += len(segments[i])
         # K1 = 0
         # K2 = 0
         # K3 = 0

@@ -1,7 +1,6 @@
-import jieba
+import re
 
 import pycorrector
-import re
 
 
 def get_exclamation():
