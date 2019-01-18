@@ -209,9 +209,9 @@ def detect_error(segments, text):
                                                                                                                segments,
                                                                                                                text)
         # K1 = 0
-        K2 = 0
-        K3 = 0
-        K4 = 0
+        # K2 = 0
+        # K3 = 0
+        # K4 = 0
         # K5 = 0
         K = K1 + K2 + K3 + K4 + K5
         if K >= 1.5:
