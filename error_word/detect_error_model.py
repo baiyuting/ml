@@ -87,6 +87,45 @@ def get_three_characters_model():
     return model
 
 
+def get_pos_model(model_name):
+    """
+    获取词性模型
+    :param model_name:
+    :return:
+    """
+    with open(model_name, 'r', encoding='utf-8') as fp:
+        lines = fp.readlines()
+    model = {}
+    for line in lines:
+        segs = line.split("\t")
+        model[segs[0]] = int(segs[1])
+    return model
+
+
+def get_one_pos_model():
+    """
+    一元词性获取
+    :return:
+    """
+    return get_pos_model("one_pos_model")
+
+
+def get_two_pos_model():
+    """
+    二元词性获取
+    :return:
+    """
+    return get_pos_model("two_pos_model")
+
+
+def get_three_pos_model():
+    """
+    三元词性获取
+    :return:
+    """
+    return get_pos_model("three_pos_model")
+
+
 def one_word_model(lines):
     """
     people2014_words.txt
@@ -322,9 +361,15 @@ def get_2014_corpus():
 
 
 def write_model(model_name, key_count):
+    """
+    写入模型
+    :param model_name:
+    :param key_count:
+    :return:
+    """
     temp_lines = []
     for key in key_count.keys():
-        temp_line = key + " " + str(key_count[key]) + '\n'
+        temp_line = key + "\t" + str(key_count[key]) + '\n'
         temp_lines.append(temp_line)
     f = open(model_name, "w", encoding="utf-8")
     f.writelines(temp_lines)
@@ -348,8 +393,6 @@ def one_pos_model():
                 if "/" not in t:
                     continue
                 key = get_pos(t)
-                if key == 'nr2':
-                    print(line)
                 increase_key_count(key, pos_count)
     write_model("one_pos_model", pos_count)
 

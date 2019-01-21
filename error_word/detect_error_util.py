@@ -15,7 +15,7 @@ def cut_word_jieba(text):
 
 def cut_word_hanlp(text):
     """
-    hanlp 分词
+    hanlp 分词，返回分词和词性
     :param text:
     :return:
     """
@@ -24,6 +24,22 @@ def cut_word_hanlp(text):
     viterbi_segment = JPackage("com.hankcs.hanlp.seg.Viterbi").ViterbiSegment()
     s = viterbi_segment.seg(text)
     res = [item.word for item in s]
+    res_pos = [str(item.nature) for item in s]
+    shutdownJVM()
+    return res, res_pos
+
+
+def cut_pos_hanlp(text):
+    """
+    hanlp 词性获取
+    :param text:
+    :return:
+    """
+    startJVM(getDefaultJVMPath(), "-Djava.class.path=D:\hanlp\hanlp-1.7.0.jar;D:\hanlp", "-Xms1g",
+             "-Xmx1g")  # 启动JVM，Linux需替换分号;为冒号:
+    viterbi_segment = JPackage("com.hankcs.hanlp.seg.Viterbi").ViterbiSegment()
+    s = viterbi_segment.seg(text)
+    res = [str(item.nature) for item in s]
     shutdownJVM()
     return res
 

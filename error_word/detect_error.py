@@ -3,7 +3,8 @@
 """
 
 from error_word.detect_error_model import get_one_word_model, get_two_words_model, get_three_words_model, \
-    get_one_character_model, get_two_characters_model, get_three_characters_model
+    get_one_character_model, get_two_characters_model, get_three_characters_model, get_two_pos_model, get_one_pos_model, \
+    get_three_pos_model
 
 # 词模型
 from error_word.detect_error_util import is_character_chinese, is_seg_chinese, contain_mood_word
@@ -19,18 +20,24 @@ two_characters_model = get_two_characters_model()
 three_characters_model = get_three_characters_model()
 characters_model = [one_character_model, two_characters_model, three_characters_model]
 
+# 词性模型
+one_pos_model = get_one_pos_model()
+two_pos_model = get_two_pos_model()
+three_pos_model = get_three_pos_model()
+pos_model = [one_pos_model, two_pos_model, three_pos_model]
+
 # 字词模型
-word_character_model = [words_model, characters_model]
+word_character_model = [words_model, characters_model, pos_model]
 
 
-def R(segments, word_or_character):
+def R(segments, word_or_character_or_pos):
     """
     计算 连续字词 的 共现频次
     :param segments:
-    :param word_or_character: word 0| character 1
+    :param word_or_character: word 0| character 1 | pos 2
     :return:
     """
-    model = word_character_model[word_or_character][len(segments) - 1]  # 获取对应的字词模型
+    model = word_character_model[word_or_character_or_pos][len(segments) - 1]  # 获取对应的字词模型
     key = " ".join(segments)  # 获取查询对应模型的频次需要的 key 值
     if key not in model.keys():
         return 0
@@ -245,6 +252,59 @@ def K_5(i, c_i, segments, text):
     return K5
 
 
+def K_6(i, segments, segments_pos):
+    """
+    二元词性模型
+    :param i:
+    :param segments:
+    :param segments_pos:
+    :return:
+    """
+    K6 = 0
+    if len(segments[i]) != 1:  # 如果不是散串，直接返回结果
+        return K6
+    begin, end = word_scope(i, len(segments_pos), 2)
+    if end - begin + 1 < 2:
+        return K6
+    for index in range(begin, end + 1 - 1):
+        pos = [segments_pos[index], segments_pos[index + 1]]
+        r = R(pos, 2)
+        if r == 0:  # 只要有错，认为有问题
+            K6 += 1
+        else:
+            K6 -= 1
+    return K6
+
+
+def two_pos_model_frequency(i, segments_pos):
+    """
+    二元词性模型 频次统计
+    :param i:
+    :param segments:
+    :param segments_pos:
+    :return:
+    """
+    return pos_model_frequency(i, segments_pos, 2)
+
+
+def pos_model_frequency(i, segments_pos, n_gram):
+    """
+    n 元词性模型 频次统计
+    :param i:
+    :param segments_pos:
+    :param n_gram:
+    :return:
+    """
+    count = [0 for _ in range(n_gram)]
+    begin, end = word_scope(i, len(segments_pos), n_gram)
+    if end - begin < (n_gram - 1):
+        return count
+    for index in range(begin, end - n_gram + 2):  # [begin, end-ngram+2)
+        pos = [segments_pos[i] for i in range(begin, begin + n_gram)]
+        count[index] = R(pos, 2)
+    return count
+
+
 def two_characters_model_frequency(i, c_i, segments, text):
     """
     二元字模型 频次 统计 [f1,f2]
@@ -287,27 +347,30 @@ def character_model_frequency(i, c_i, segments, text, n_gram):
     return count
 
 
-def detect_error(segments, text):
+def detect_error(segments, segments_pos, text):
     """
     查错
     :param text:
     :param segments
+    :param segments_pos
     :return: 每一个 seg 检查结果
     """
     position_res = {}
     c_i = 0
     for i in range(len(segments)):
         error_i = False  # 默认这个位置是没有错的
-        K1, K2, K3, K4, K5 = K_1(i, segments), \
-                             K_2(i, segments), K_3(i, segments), \
-                             K_4(i, c_i, segments, text), K_5(i, c_i, segments, text)
+        K1, K2, K3, K4, K5, K6 = K_1(i, segments), \
+                                 K_2(i, segments), K_3(i, segments), \
+                                 K_4(i, c_i, segments, text), K_5(i, c_i, segments, text), \
+                                 K_6(i, segments, segments_pos)
+
         c_i += len(segments[i])
         # K1 = 0
         # K2 = 0
         # K3 = 0
         # K4 = 0
         # K5 = 0
-        K = K1 + K2 + K3 + K4 + K5
+        K = K1 + K2 + K3 + K4 + K5 + K6
         if K >= 1.0:
             error_i = True
         position_res[i] = error_i

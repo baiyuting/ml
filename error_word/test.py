@@ -1,5 +1,5 @@
 from error_word.detect_error import detect_error
-from error_word.detect_error_util import cut_word_hanlp
+from error_word.detect_error_util import cut_word_hanlp, cut_pos_hanlp
 
 
 def test():
@@ -8,10 +8,10 @@ def test():
     f.close()
 
     text = "".join(lines)
-    segments = cut_word_hanlp(text)
+    segments, segments_pos = cut_word_hanlp(text)
 
     print(segments)
-    position_res = detect_error(segments, text)
+    position_res = detect_error(segments, segments_pos, text)
     print(position_res)
 
     for i in range(len(segments)):
