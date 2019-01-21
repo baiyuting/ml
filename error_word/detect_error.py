@@ -71,6 +71,21 @@ def K_1(i, segments):
     return K1
 
 
+def error_character_word(i, segments):
+    """
+    计算 单字成词 错误问题
+    如果分词后，某个 字 落单，但是 单字不能成词，则表明有问题
+    :param i:
+    :param segments:
+    :return:
+    """
+    error = 0
+    if len(segments[i]) == 1 and is_character_chinese(segments[i]) and P_character_word(
+            segments[i]) == 0:  # 如果是散串、汉字、单字成词概率为 0
+        error = 1
+    return error
+
+
 def word_scope(i, len, n_gram):
     """
      返回 词的返回 [begin,end]
@@ -170,6 +185,8 @@ def word_model_frequency(i, segments, n_gram):
     """
     count = [0 for _ in range(n_gram)]
     begin, end = word_scope(i, len(segments), n_gram)
+    if end - begin < n_gram - 1:
+        return count
     for index in range(begin, end - n_gram + 2):  # [begin, end-n_gram+1] 或者 [begin, end-n_gram+2)
         words = [segments[i] for i in range(index, index + n_gram)]
         count[index] = R(words, 0)
@@ -270,9 +287,9 @@ def K_6(i, segments, segments_pos):
         pos = [segments_pos[index], segments_pos[index + 1]]
         r = R(pos, 2)
         if r == 0:  # 只要有错，认为有问题
-            K6 += 1
+            K6 += 0.1
         else:
-            K6 -= 1
+            K6 -= 0.5
     return K6
 
 
@@ -341,6 +358,8 @@ def character_model_frequency(i, c_i, segments, text, n_gram):
     """
     count = [0 for _ in range(n_gram)]
     begin, end = character_scope(c_i, len(segments[i]), len(text), n_gram)
+    if end - begin < n_gram - 1:
+        return count
     for index in range(begin, end - (n_gram - 1) + 1):  # [begin, end-n_gram+1]
         chars = [text[i] for i in range(index, index + n_gram)]
         count[index] = R(chars, 1)
@@ -363,7 +382,6 @@ def detect_error(segments, segments_pos, text):
                                  K_2(i, segments), K_3(i, segments), \
                                  K_4(i, c_i, segments, text), K_5(i, c_i, segments, text), \
                                  K_6(i, segments, segments_pos)
-
         c_i += len(segments[i])
         # K1 = 0
         # K2 = 0
@@ -371,7 +389,83 @@ def detect_error(segments, segments_pos, text):
         # K4 = 0
         # K5 = 0
         K = K1 + K2 + K3 + K4 + K5 + K6
-        if K >= 1.0:
+        if K >= 1.6:
             error_i = True
+        position_res[i] = error_i
+    return position_res
+
+
+def get_frequency(i, c_i, segments, text):
+    """
+    二元字、三元字、二元词、三元词 的 频次
+    :param i:
+    :param c_i:
+    :param segments:
+    :param text:
+    :return:
+    """
+    two_characters_frequency = two_characters_model_frequency(i, c_i, segments, text)
+    three_characters_frequency = three_characters_model_frequency(i, c_i, segments, text)
+    two_words_frequency = two_words_model_frequency(i, segments)
+    three_words_frequency = three_words_model_frequency(i, segments)
+    return [two_characters_frequency, three_characters_frequency, two_words_frequency, three_words_frequency]
+
+
+def get_flat_frequency(i, c_i, segments, text):
+    """
+    获取 二元字、三元字、二元词、三元词 的 频次
+    数据 扁平化，降到一个维度
+    :param i:
+    :param c_i:
+    :param segments:
+    :param text:
+    :return:
+    """
+    res = []
+    frequency = get_frequency(i, c_i, segments, text)
+    for freq in frequency:
+        res += freq
+    return res
+
+
+def multiply_array(a1, a2):
+    """
+    [a,b,c]
+    [x,y,z]
+    -> [a*x,b*y,c*z]
+    :param a1:
+    :param a2:
+    :return:
+    """
+    res = []
+    for i in range(len(a1)):
+        res.append(a1[i] * a2[i])
+    return res
+
+
+def detect_error2(segments, segments_pos, text):
+    """
+    查错，第二种办法
+    :param segments:
+    :param segments_pos:
+    :param text:
+    :return:
+    """
+    position_res = {}
+    c_i = 0
+    for i in range(len(segments)):
+        error_i = False  # 默认这个位置是没有错的
+        if error_character_word(i, segments):
+            error_i = True
+        elif 0 in two_pos_model_frequency(i, segments_pos):  # 如果统计二元词性 频次 中有 0 的情况，判定为错，判断二元词性接续问题，严格看待
+            error_i = True
+        else:  # 此时开始 二元字、三元字、二元词、三元词 的判定
+            res = get_flat_frequency(i, c_i, segments, text)
+            temp = [1 if r > 0 else 0 for r in res]
+            w = [1, 1, 0, 0, 0, 0, 0, 0, 0, 0]
+            res = multiply_array(temp, w)
+            if sum(res) >= 1:
+                error_i = True
+        c_i += len(segments[i])  # 记录字的位置
         position_res[i] = error_i
     return position_res

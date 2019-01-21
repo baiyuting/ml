@@ -1,4 +1,4 @@
-from error_word.detect_error import detect_error
+from error_word.detect_error import detect_error,detect_error2
 from error_word.detect_error_util import cut_word_hanlp, cut_pos_hanlp
 
 
