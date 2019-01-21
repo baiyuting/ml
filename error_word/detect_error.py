@@ -3,9 +3,11 @@
 """
 
 from error_word.detect_error_model import get_one_word_model, get_two_words_model, get_three_words_model, \
-    get_one_character_model, get_two_characters_model, get_three_characters_model, is_character_chinese, is_seg_chinese
+    get_one_character_model, get_two_characters_model, get_three_characters_model
 
 # 词模型
+from error_word.detect_error_util import is_character_chinese, is_seg_chinese, contain_mood_word
+
 one_word_model = get_one_word_model()
 two_words_model = get_two_words_model()
 three_words_model = get_three_words_model()
@@ -167,7 +169,9 @@ def K_4(i, c_i, segments, text):
         return K4
     for index in range(begin, end + 1 - 2):  # [begin, end-2]
         chars = [text[index], text[index + 1], text[index + 2]]
-        if not is_seg_chinese("".join(chars)):
+        if not is_seg_chinese("".join(chars)):  # 不处理包含 非汉字 的情况
+            continue
+        if contain_mood_word("".join(chars)):  # 不处理包含 语气词 的情况
             continue
         r = R(chars, 1)
         if r == 0:
@@ -223,12 +227,12 @@ def detect_error(segments, text):
                                                                                                                     text)
         c_i += len(segments[i])
         # K1 = 0
-        # K2 = 0
-        # K3 = 0
+        K2 = 0
+        K3 = 0
         # K4 = 0
         # K5 = 0
         K = K1 + K2 + K3 + K4 + K5
-        if K >= 1.5:
+        if K >= 1.0:
             error_i = True
         position_res[i] = error_i
     return position_res
