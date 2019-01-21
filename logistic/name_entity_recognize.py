@@ -13,8 +13,6 @@ def test():
     # 命名实体识别与词性标注
     NLPTokenizer = JClass('com.hankcs.hanlp.tokenizer.NLPTokenizer')
 
-    # s = NLPTokenizer.segment('飞机项目办公室的朱德森')
-
     viterbi_segment = JPackage("com.hankcs.hanlp.seg.Viterbi").ViterbiSegment()
 
     with open('D:/20181101_审核内容情感分析/export_feedback_audit_2018-11-06/material/material5_pure_else.json', 'r',
