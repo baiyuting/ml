@@ -7,7 +7,8 @@ from error_word.detect_error_model import get_one_word_model, get_two_words_mode
     get_three_pos_model
 
 # 词模型
-from error_word.detect_error_util import is_character_chinese, is_seg_chinese, contain_mood_word
+from error_word.detect_error_util import is_character_chinese, is_seg_chinese, contain_mood_word, \
+    contain_preposition_word, contain_auxiliary_verb_word, contain_locality_word, contain_vshi_word
 
 one_word_model = get_one_word_model()
 two_words_model = get_two_words_model()
@@ -181,15 +182,25 @@ def word_model_frequency(i, segments, n_gram):
     通用 单词接续模型 频次 统计
     :param i:
     :param segments:
+    :param n_gram:
     :return:
     """
     count = [0 for _ in range(n_gram)]
-    begin, end = word_scope(i, len(segments), n_gram)
-    if end - begin < n_gram - 1:
-        return count
+    begin, end = i - (n_gram - 1), i + (n_gram - 1)
     for index in range(begin, end - n_gram + 2):  # [begin, end-n_gram+1] 或者 [begin, end-n_gram+2)
-        words = [segments[i] for i in range(index, index + n_gram)]
-        count[index] = R(words, 0)
+        if index < 0 or index + n_gram - 1 > len(segments) - 1:  # 超出范围，无法统计
+            count[index - begin] = -1
+        else:
+            words = [segments[i] for i in range(index, index + n_gram)]
+            position = index - begin
+            if contain_vshi_word(words):
+                count[position] = -1
+            elif contain_mood_word(words):
+                count[position] = -1
+            elif is_seg_chinese(words):
+                count[position] = R(words, 0)
+            else:
+                count[position] = -1
     return count
 
 
@@ -297,11 +308,34 @@ def two_pos_model_frequency(i, segments_pos):
     """
     二元词性模型 频次统计
     :param i:
-    :param segments:
     :param segments_pos:
     :return:
     """
     return pos_model_frequency(i, segments_pos, 2)
+
+
+def three_pos_model_frequency(i, segments_pos):
+    """
+    三元词性模型 频次统计
+    :param i:
+    :param segments_pos:
+    :return:
+    """
+    return pos_model_frequency(i, segments_pos, 3)
+
+
+def contain_pos(pos):
+    """
+    该 词性 列表中的所有词性是否都在 one_pos_model词性模型 中存在
+    :param pos:
+    :return:
+    """
+    contain_p = True
+    for p in pos:
+        if p not in one_pos_model.keys():
+            contain_p = False
+            break
+    return contain_p
 
 
 def pos_model_frequency(i, segments_pos, n_gram):
@@ -313,12 +347,16 @@ def pos_model_frequency(i, segments_pos, n_gram):
     :return:
     """
     count = [0 for _ in range(n_gram)]
-    begin, end = word_scope(i, len(segments_pos), n_gram)
-    if end - begin < (n_gram - 1):
-        return count
-    for index in range(begin, end - n_gram + 2):  # [begin, end-ngram+2)
-        pos = [segments_pos[i] for i in range(begin, begin + n_gram)]
-        count[index] = R(pos, 2)
+    begin, end = i - (n_gram - 1), i + (n_gram - 1)
+    for j in range(begin, end - n_gram + 2):  # [begin, end-ngram+2)
+        if j < 0 or j + n_gram - 1 > len(segments_pos) - 1:  # 如果出现超出范围的情况，该位置设为 -1
+            count[j - begin] = -1
+        else:
+            pos = [segments_pos[z] for z in range(j, j + n_gram)]
+            if contain_pos(pos):  # 如果该串的词性在现有词性模型中存在，则进行统计
+                count[j - begin] = R(pos, 2)
+            else:
+                count[j - begin] = -1  # 否则没法统计，设为 -1
     return count
 
 
@@ -349,6 +387,7 @@ def three_characters_model_frequency(i, c_i, segments, text):
 def character_model_frequency(i, c_i, segments, text, n_gram):
     """
     通用的 字模型 频次统计
+    针对散串
     :param i:
     :param c_i:
     :param segments:
@@ -357,12 +396,28 @@ def character_model_frequency(i, c_i, segments, text, n_gram):
     :return:
     """
     count = [0 for _ in range(n_gram)]
-    begin, end = character_scope(c_i, len(segments[i]), len(text), n_gram)
-    if end - begin < n_gram - 1:
-        return count
+    if len(segments[i]) > 1:  # 如果 不是 散串，不统计
+        return [-1 for _ in range(n_gram)]
+    begin, end = c_i - (n_gram - 1), c_i + len(segments[i]) - 1 + n_gram - 1
     for index in range(begin, end - (n_gram - 1) + 1):  # [begin, end-n_gram+1]
-        chars = [text[i] for i in range(index, index + n_gram)]
-        count[index] = R(chars, 1)
+        count_i = index - begin
+        if index < 0 or index + n_gram - 1 > len(text) - 1:
+            count[count_i] = -1
+        else:
+            chars = [text[z] for z in range(index, index + n_gram)]
+            # if contain_mood_word(chars):  # 如果包含语气词，不进行字频统计
+            #     count[count_i] = -1
+            # elif contain_preposition_word(chars):  # 包含介词，不进行字频统计
+            #     count[count_i] = -1
+            # elif contain_auxiliary_verb_word(chars):  # 包含 助动词，不进行字频统计
+            #     count[count_i] = -1
+            # elif contain_locality_word(chars):  # 包含方位词，不进行词频统计
+            #     count[count_i] = -1
+            # el
+            if is_seg_chinese(chars):  # 只有是汉字的时候，才进行字频次统计
+                count[count_i] = R(chars, 1)
+            else:  # 含有非汉字，没法统计
+                count[count_i] = -1
     return count
 
 
@@ -454,18 +509,86 @@ def detect_error2(segments, segments_pos, text):
     position_res = {}
     c_i = 0
     for i in range(len(segments)):
-        error_i = False  # 默认这个位置是没有错的
-        if error_character_word(i, segments):
-            error_i = True
-        elif 0 in two_pos_model_frequency(i, segments_pos):  # 如果统计二元词性 频次 中有 0 的情况，判定为错，判断二元词性接续问题，严格看待
-            error_i = True
-        else:  # 此时开始 二元字、三元字、二元词、三元词 的判定
-            res = get_flat_frequency(i, c_i, segments, text)
-            temp = [1 if r > 0 else 0 for r in res]
-            w = [1, 1, 0, 0, 0, 0, 0, 0, 0, 0]
-            res = multiply_array(temp, w)
-            if sum(res) >= 1:
-                error_i = True
-        c_i += len(segments[i])  # 记录字的位置
+        error_i = 0  # 默认这个位置是没有错的
+        if error_character_word(i, segments):  # 单字成词概率为 0，判定为错
+            error_i += 1
+        if 0 in two_pos_model_frequency(i, segments_pos):  # 如果统计二元词性 频次 中有 0 的情况，判定为错，判断二元词性接续问题，严格看待
+            error_i += 2
+        two_characters_frequency = two_characters_model_frequency(i, c_i, segments, text)
+        if 0 in two_characters_frequency:  # 添加 二元字 模型，统计二元字模型 中频次有 0 的情况，如果有，判定为错
+            # if two_characters_frequency[0] == 0 and i > 0 and len(segments[i - 1]) > 1:  # 字 左边匹配为0，字左边的词 长度> 1
+            #     two_characters_frequency[0] = -1  # 不用
+            # if two_characters_frequency[1] == 0 and i < len(segments) - 1 and len(segments[i + 1]) > 1:  # 字左边的词 长度> 1
+            #     two_characters_frequency[1] = -1  # 不用统计
+            if 0 in two_characters_frequency:
+                error_i += 4
         position_res[i] = error_i
+        c_i += len(segments[i])  # 记录字的位置
+
     return position_res
+
+
+def detect_error3(text):
+    """
+    查错3
+    :param text:
+    :return:
+    """
+    chars = list(text)
+    length = len(chars)
+    if length < 2:
+        return {0: False}
+    res = {}
+    for i in range(length):
+        error_i = False
+        if i == 0:  # 文首
+            if R(chars[0:2], 1) == 0 and is_seg_chinese(chars[0:2]):  # 如果是中文 且 频次为0
+                error_i = True
+        elif i == length - 1:  # 文尾
+            if R(chars[-2:], 1) == 0 and is_seg_chinese(chars[-2:]):  # 如果是中文 且 频次为 0
+                error_i = True
+        else:  # 文中
+            chars1 = chars[i - 1:i + 1]  # 前面的二元字
+            chars2 = chars[i:i + 2]  # 后面的二元字
+            error_i = judge_2_chars(chars1) or judge_2_chars(chars2)  # 两个 二元字 只要有一个有问题 就认为 有问题
+        res[i] = error_i
+    return res
+
+
+def judge_2_chars(chars):
+    """
+    判断 二元字 是否是错误的
+    :param chars:
+    :param error_i:
+    :return:
+    """
+    error_i = False
+    # if is_seg_chinese(chars) and not contain_mood_word(chars) and \
+    #         not contain_preposition_word(chars):  # 如果是中文、不是语气词、不是介词
+    if is_seg_chinese(chars) and not contain_mood_word(chars) and not contain_preposition_word(chars) and not contain_auxiliary_verb_word(chars):
+        if R(chars, 1) == 0:
+            error_i = True
+    return error_i
+
+
+def test_detect_error():
+    f = open('test/文本.txt', 'r', encoding='utf-8')
+    lines = f.readlines()
+    f.close()
+
+    text = "".join(lines)
+
+    segments = list(text)
+    position_character_res = detect_error3(text)
+    for i in range(len(segments)):
+        if position_character_res[i]:
+            segments[i] = segments[i] + "（" + str(position_character_res[i]) + "）"
+
+    text = "".join(segments)
+    f = open('test/文本-括号中是机器修改的.txt', 'w', encoding='utf-8')
+    f.writelines(text)
+    f.close()
+
+
+if __name__ == '__main__':
+    test_detect_error()

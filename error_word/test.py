@@ -11,12 +11,17 @@ def test():
     segments, segments_pos = cut_word_hanlp(text)
 
     print(segments)
-    position_res = detect_error(segments, segments_pos, text)
+    position_res = detect_error2(segments, segments_pos, text)
     print(position_res)
 
     for i in range(len(segments)):
         if position_res[i]:  # 有问题的情况下
             segments[i] = segments[i] + "（" + str(position_res[i]) + "）"
+
+    # segments = list(text)
+    # for i in range(len(segments)):
+    #     if position_character_res[i]:
+    #         segments[i] = segments[i] + "（" + str(position_character_res[i]) + "）"
 
     text = "".join(segments)
     f = open('test/文本-括号中是机器修改的.txt', 'w', encoding='utf-8')

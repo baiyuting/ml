@@ -1,0 +1,3 @@
+from error_word.detect_error_model import two_characters_model
+
+two_characters_model()

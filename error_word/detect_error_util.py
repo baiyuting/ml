@@ -65,10 +65,11 @@ def is_exclamation_word(word):
 def get_mood_words():
     """
     获取语气词-常用
+    来源于 https://baike.baidu.com/item/%E8%AF%AD%E6%B0%94%E8%AF%8D/1267117?fr=aladdin
     一般放在句末
     :return:
     """
-    return "^[的了呢吧吗啊]$"
+    return "^[的了么呢吧吗嘛啊]$"
 
 
 def is_mood_word(word):
@@ -90,6 +91,66 @@ def contain_mood_word(seg):
         if is_mood_word(char):
             return True
     return False
+
+
+def contain_preposition_word(seg):
+    """
+    是否包含介词
+    介词：
+    临乎与为共冲到兜于即从以似假去让诸及往迆连迎道遵对导寻将当叫吃合同向和问如尽打执把投拦按捉洎给维缘在因惟就比照较方爿暨拿替望朝爰直由率被用繇齐至管自起趁践跟
+    http://xh.5156edu.com/page/z3033m4876j18636.html
+    :return:
+    """
+    for char in seg:
+        if re.match("[临乎与为共冲到兜于即从以似假去让诸及往迆连迎道遵对导寻将当叫吃合同向和问如尽打执把投拦按捉洎给维缘在因惟就比照较方爿暨拿替望朝爰直由率被用繇齐至管自起趁践跟]", char):
+            return True
+    return False
+
+
+def contain_auxiliary_verb_word(seg):
+    """
+    是否包含助动词
+    当|得|该|该当|敢|敢于|会|可|可能|可以|肯|乐意|能|能够|让|容许|希望|想|要|应|应当|应该|愿|愿意|允许|自愿
+    :param seg:
+    :return:
+    """
+    for char in seg:
+        if re.match("当|得|该|该当|敢|敢于|会|可|可能|可以|肯|乐意|能|能够|让|容许|希望|想|要|应|应当|应该|愿|愿意|允许|自愿", char):
+            return True
+    return False
+
+
+def contain_vshi_word(seg):
+    """
+    是否包含 动词 是
+    :param seg:
+    :return:
+    """
+    return contain_certain_pattern_seg("是", seg)
+
+
+def contain_certain_pattern_seg(pattern, seg):
+    """
+    文本中 字符 是否包含 特定格式 信息
+    :param pattern:
+    :param seg:
+    :return:
+    """
+    for char in seg:
+        if re.match(pattern, char):
+            return True
+    return False
+
+
+def contain_locality_word(seg):
+    """
+    是否包含方位词
+    上下前后左右东西南北中内外里间旁
+    http://xh.5156edu.com/page/z9084m6671j19732.html
+    :param seg:
+    :return:
+    """
+    return contain_certain_pattern_seg("[上下前后左右东西南北中内外里间旁]", seg)
 
 
 def is_seg_chinese(seg):

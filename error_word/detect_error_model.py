@@ -1,4 +1,6 @@
+import _thread
 import re
+import time
 
 from error_word.detect_error_util import is_character_chinese
 
@@ -235,12 +237,14 @@ def one_character_model(lines):
     f.close()
 
 
-def two_characters_model(lines):
+def two_characters_model():
     """
-    people2014_characters.txt
+    使用 人民日报 和 wiki 两个语料
     二元字模型
     :return:
     """
+    lines = get_wiki_corpus()
+    lines += get_2014_corpus()
     two_character_count = {}
     for line in lines:
         line = line.rstrip()  # 去掉句子末尾的\n
@@ -250,13 +254,7 @@ def two_characters_model(lines):
             if key not in two_character_count.keys():
                 two_character_count[key] = 0
             two_character_count[key] += 1
-    temp_lines = []
-    for key in two_character_count.keys():
-        temp_line = key + "\t" + str(two_character_count[key]) + '\n'
-        temp_lines.append(temp_line)
-    f = open("two_characters_model", "w", encoding="utf-8")
-    f.writelines(temp_lines)
-    f.close()
+    write_model("two_characters_model", two_character_count)
 
 
 def three_characters_model(lines):
@@ -360,6 +358,18 @@ def get_2014_corpus():
     return lines
 
 
+def get_wiki_corpus():
+    """
+    获取 wiki 中文 百科 生语料
+    :return:
+    """
+    with open("wiki/zh_wiki_00", 'r', encoding='utf-8') as fp:
+        lines = fp.readlines()
+    with open("wiki/zh_wiki_01", 'r', encoding='utf-8') as fp:
+        lines2 = fp.readlines()
+    return lines + lines2
+
+
 def write_model(model_name, key_count):
     """
     写入模型
@@ -371,8 +381,18 @@ def write_model(model_name, key_count):
     for key in key_count.keys():
         temp_line = key + "\t" + str(key_count[key]) + '\n'
         temp_lines.append(temp_line)
-    f = open(model_name, "w", encoding="utf-8")
-    f.writelines(temp_lines)
+    write_text(model_name, temp_lines)
+
+
+def write_text(file_name, lines):
+    """
+    写入文本信息
+    :param file_name:
+    :param lines:
+    :return:
+    """
+    f = open(file_name, "w", encoding="utf-8")
+    f.writelines(lines)
     f.close()
 
 
@@ -526,3 +546,155 @@ def three_pos_model():
     :return:
     """
     pos_model("three_pos_model", 3)
+
+
+import threading
+import time
+
+
+class myThread(threading.Thread):
+    def __init__(self, url, path):
+        threading.Thread.__init__(self)
+        self.url = url
+        self.path = path
+
+    def run(self):
+        print("hi")
+        store_url_text(self.url, self.path)
+
+
+def write_baidu_url_path():
+    """
+    百度百科 url， path 路径生成
+    :return:
+    """
+    mycol = connect_mongodb()
+    key_value = {}
+    for x in mycol.find():
+        url = "http://qt-ml.oss-cn-hangzhou.aliyuncs.com/" + x['oss_path']
+        path = 'baidu/' + str(x['_id'])
+        key_value[url] = path
+    write_model("baidu_url_path", key_value)
+
+
+def baidu_corpus():
+    """
+    百度百科 语料库 生成
+    :return:
+    """
+    key_value = get_baidu_url_path("baidu_url_path")
+    count = 0
+    for key in key_value.keys():
+        count += 1
+        print(count, " is processing!!!")
+        try:
+            store_url_text(key, key_value[key].rstrip())
+        except IOError:
+            print(count, " is not stored")
+    print("finished !!!")
+
+
+def get_baidu_url_path(name):
+    """
+    从文件中获取 url - path 对
+    :param name:
+    :return:
+    """
+    with open(name, 'r', encoding='utf-8') as fp:
+        lines = fp.readlines()
+    model = {}
+    for line in lines:
+        segs = line.split("\t")
+        model[segs[0]] = segs[1]
+    return model
+
+
+def get_url_path_from_mongodb():
+    """
+    从 mongodb 中获取 url, path 对
+    :return:
+    """
+    mycol = connect_mongodb()
+    key_value = {}
+    count = 0
+    for x in mycol.find():
+        url = "http://qt-ml.oss-cn-hangzhou.aliyuncs.com/" + x['oss_path']
+        path = 'baidu/' + str(x['_id'])
+        key_value[url] = path
+        count += 1
+        print(count)
+    return key_value
+
+
+def store_with_threads(key_value):
+    """
+    多线程存储
+    :param key_value:
+    :return:
+    """
+    count = 0
+    threads = []
+    for key in key_value.keys():
+        t = threading.Thread(target=store_url_text, args=(key, key_value[key]))
+        t.start()
+        threads.append(t)
+        count += 1
+        print(count)
+        if len(threads) % 500 == 0:
+            for th in threads:
+                th.join()
+    for th in threads:
+        th.join()
+
+
+import urllib.request
+from bs4 import BeautifulSoup
+
+
+def store_url_text(url, filename):
+    text = get_url_text(url)
+    write_text(filename, text)
+
+
+def get_url_text(url):
+    """
+    获取 url 中的文本内容
+    :param url:
+    :return:
+    """
+    return get_html_text(get_url_html(url))
+
+
+def get_html_text(html):
+    """
+    获取 html 信息中的文本
+    :param html:
+    :return:
+    """
+    soup = BeautifulSoup(html, features="html.parser")
+    return soup.find("div", "main-content").get_text()
+
+
+def get_url_html(url):
+    """
+    通过 url 获取 文本 内容
+    :param url:
+    :return:
+    """
+    with urllib.request.urlopen(url) as response:
+        html = response.read()
+    return html
+
+
+import pymongo
+
+
+def connect_mongodb():
+    """
+    连接 mongodb，获取 百度百科 表 中记录
+    :return:  百度百科表 集合
+    """
+    myclient = pymongo.MongoClient('mongodb://47.97.189.163:27017/')
+    db = myclient['ml_entity']
+    table = db['entities']
+    return table
