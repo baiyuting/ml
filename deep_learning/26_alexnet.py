@@ -5,6 +5,7 @@ import os
 import sys
 
 net = nn.Sequential()
+# 使用较大的 11*11 窗口捕获物体。同时使用步子幅度4来较大幅度减少 输出高宽。这里使用的输出通道数比 LENET 中的大很多
 net.add(nn.Conv2D(96, kernel_size=11, strides=4, activation='relu'),
         nn.MaxPool2D(pool_size=3, strides=2),
         # 减小卷积窗口，使用填充为 2 来使得输入输出高宽一致，且增大输出通道数。
@@ -21,18 +22,34 @@ net.add(nn.Conv2D(96, kernel_size=11, strides=4, activation='relu'),
         nn.Dense(4096, activation='relu'), nn.Dropout(0.5),
         # 输出层。由于这里使用 Fashion-MNIST，所以用类别数为 10，而非论文中的 1000。
         nn.Dense(10))
-X = nd.random.uniform(shape=(1,1,224,224))
+X = nd.random.uniform(shape=(1, 1, 224, 224))
 net.initialize()
 for layer in net:
-        X = layer(X)
-        print(layer.name, 'output shape:\t', X.shape)
+    X = layer(X)
+    print(layer.name, 'output shape:\t', X.shape)
+
 
 def load_data_fashion_mnist(batch_size, resize=None, root=os.path.join('~', '.mxnet', 'dataset', 'fashion-mnist')):
-        root = os.path.expanduser(root)
-        transformer = []
-        if resize:
-                transformer += [gdata.vision.transforms.Resize(resize)]
-        transformer += [gdata.vision.transforms.ToTensor()]
-        transformer = gdata.vision.transforms.Compose(transformer)
-        mnist_train = gdata.vision.FashionMNIST(root=root, train=True)
-        mnist_test = gdata.vision.FashionMNIST(root=root, train=False)
+    root = os.path.expanduser(root)  # 展开用户路径 ~
+    transformer = []
+    if resize:
+        transformer += [gdata.vision.transforms.Resize(resize)]
+    transformer += [gdata.vision.transforms.ToTensor()]
+    transformer = gdata.vision.transforms.Compose(transformer)
+    mnist_train = gdata.vision.FashionMNIST(root=root, train=True)
+    mnist_test = gdata.vision.FashionMNIST(root=root, train=False)
+    num_workers = 0 if sys.platform.startswith('win32') else 4
+    train_iter = gdata.DataLoader(mnist_train.transform_first(transformer), batch_size, shuffle=True,
+                                  num_workers=num_workers)
+    test_iter = gdata.DataLoader(mnist_test.transform_first(transformer), batch_size, shuffle=False,
+                                 num_workers=num_workers)
+    return train_iter, test_iter
+
+
+batch_size = 128
+# 如出现 out of memory 的报错信息，可减少 batch_size 或者 resize
+train_iter, test_iter = load_data_fashion_mnist(batch_size, resize=224)
+lr, num_epochs, ctx = 0.01, 5, d2l.try_gpu()
+net.initialize(force_reinit=True, ctx=ctx, init=init.Xavier())
+trainer = gluon.Trainer(net.collect_params(), 'sgd', {'learning_rate': lr})
+d2l.train_ch5(net, train_iter, test_iter, batch_size, trainer, ctx, num_epochs)
